@@ -10,6 +10,7 @@
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/DeclCXX.h"
+#include "clang/AST/DeclObjC.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Lex/Lexer.h"
 #include "llvm/ADT/StringRef.h"
@@ -94,6 +95,10 @@ static std::string GetEnclosingDeclContextSignature(const Decl *D) {
     case Decl::Record:
     case Decl::CXXRecord:
     case Decl::Enum:
+    case Decl::ObjCInterface:
+    case Decl::ObjCCategory:
+    case Decl::ObjCImplementation:
+    case Decl::ObjCCategoryImpl:
       DeclName = ND->getQualifiedNameAsString();
       break;
     case Decl::CXXConstructor:
@@ -107,6 +112,16 @@ static std::string GetEnclosingDeclContextSignature(const Decl *D) {
       // ObjC Methods can not be overloaded, qualified name uniquely identifies
       // the method.
       DeclName = ND->getQualifiedNameAsString();
+      break;
+    case Decl::Field:
+    case Decl::Var:
+    case Decl::ParmVar:
+      if (const DeclContext *DC = D->getDeclContext())
+        return GetEnclosingDeclContextSignature(Decl::castFromDeclContext(DC));
+      break;
+    case Decl::ObjCIvar:
+      if (auto *Interface = cast<ObjCIvarDecl>(ND)->getContainingInterface())
+        return GetEnclosingDeclContextSignature(Interface);
       break;
     default:
       break;
